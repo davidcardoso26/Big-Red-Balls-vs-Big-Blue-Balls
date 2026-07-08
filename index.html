@@ -1,0 +1,695 @@
+# <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ARENA // Ball Battle Simulation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-void:#070a12;
+    --bg-panel:#0f1420;
+    --grid-line:#1b2434;
+    --red:#ff4757;
+    --red-glow:#ff8a95;
+    --blue:#3d8bfd;
+    --blue-glow:#8fc0ff;
+    --amber:#ffb454;
+    --text-muted:#6b7688;
+    --text-bright:#e7ecf5;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--bg-void);
+    color:var(--text-bright);
+    font-family:'JetBrains Mono', monospace;
+    overflow:hidden;
+  }
+  .app{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    height:100%;
+    width:100%;
+    padding:18px;
+  }
+  .titlebar{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    width:100%;
+    max-width:920px;
+    margin-bottom:10px;
+  }
+  h1{
+    font-family:'Orbitron', sans-serif;
+    font-weight:800;
+    font-size:clamp(18px, 3vw, 26px);
+    letter-spacing:2px;
+    margin:0;
+    color:var(--text-bright);
+  }
+  h1 span{color:var(--amber);}
+  .subtitle{
+    font-size:11px;
+    color:var(--text-muted);
+    letter-spacing:1.5px;
+    margin-top:2px;
+  }
+  .arena-wrap{
+    position:relative;
+    width:100%;
+    max-width:920px;
+    aspect-ratio: 3 / 2;
+    border:1px solid var(--grid-line);
+    border-radius:6px;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(61,139,253,0.06), transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(255,71,87,0.06), transparent 60%),
+      var(--bg-panel);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.02), 0 20px 60px rgba(0,0,0,0.5);
+    overflow:hidden;
+  }
+  canvas{
+    display:block;
+    width:100%;
+    height:100%;
+  }
+  .hud{
+    position:absolute;
+    top:10px; left:10px; right:10px;
+    display:flex;
+    justify-content:space-between;
+    font-size:11px;
+    letter-spacing:1px;
+    pointer-events:none;
+    z-index:5;
+  }
+  .hud .stat{
+    background:rgba(7,10,18,0.55);
+    border:1px solid var(--grid-line);
+    border-radius:4px;
+    padding:5px 10px;
+    backdrop-filter: blur(2px);
+  }
+  .hud .stat b{ color:var(--text-bright); font-weight:700; }
+  .hud .red b{ color:var(--red-glow); }
+  .hud .blue b{ color:var(--blue-glow); }
+
+  .controls-bar{
+    width:100%;
+    max-width:920px;
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    margin-top:10px;
+  }
+  button.ghost{
+    font-family:'JetBrains Mono', monospace;
+    background:transparent;
+    color:var(--text-muted);
+    border:1px solid var(--grid-line);
+    border-radius:4px;
+    padding:7px 14px;
+    font-size:12px;
+    letter-spacing:1px;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  button.ghost:hover{
+    color:var(--text-bright);
+    border-color:var(--amber);
+  }
+
+  /* Start overlay */
+  .overlay{
+    position:absolute; inset:0;
+    background:rgba(7,10,18,0.88);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:18px;
+    z-index:10;
+    text-align:center;
+    padding:20px;
+  }
+  .overlay h2{
+    font-family:'Orbitron', sans-serif;
+    font-size:20px;
+    letter-spacing:2px;
+    margin:0;
+    color:var(--text-bright);
+  }
+  .overlay .desc{
+    font-size:12px;
+    color:var(--text-muted);
+    max-width:440px;
+    line-height:1.6;
+  }
+  .setup-row{
+    display:flex;
+    gap:28px;
+  }
+  .setup-col{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+  }
+  .setup-col label{
+    font-size:11px;
+    letter-spacing:1.5px;
+    color:var(--text-muted);
+  }
+  .setup-col.red label{ color:var(--red-glow); }
+  .setup-col.blue label{ color:var(--blue-glow); }
+  .count-input{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .count-input button{
+    width:28px; height:28px;
+    border-radius:4px;
+    border:1px solid var(--grid-line);
+    background:var(--bg-panel);
+    color:var(--text-bright);
+    font-size:14px;
+    cursor:pointer;
+    line-height:1;
+  }
+  .count-input button:hover{ border-color:var(--amber); color:var(--amber); }
+  .count-input span{
+    width:28px;
+    text-align:center;
+    font-size:16px;
+    font-weight:700;
+  }
+  .deploy-btn{
+    font-family:'Orbitron', sans-serif;
+    font-weight:700;
+    letter-spacing:2px;
+    font-size:14px;
+    background:linear-gradient(135deg, var(--red), var(--blue));
+    color:#080a10;
+    border:none;
+    padding:12px 30px;
+    border-radius:5px;
+    cursor:pointer;
+    margin-top:4px;
+    transition:transform .12s ease, filter .12s ease;
+  }
+  .deploy-btn:hover{ filter:brightness(1.15); transform:translateY(-1px); }
+
+  .winner-overlay{
+    position:absolute; inset:0;
+    background:rgba(7,10,18,0.9);
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    z-index:11;
+    text-align:center;
+  }
+  .winner-overlay .result{
+    font-family:'Orbitron', sans-serif;
+    font-size:26px;
+    letter-spacing:2px;
+  }
+  .winner-overlay .result.red{ color:var(--red-glow); text-shadow:0 0 20px rgba(255,71,87,0.6); }
+  .winner-overlay .result.blue{ color:var(--blue-glow); text-shadow:0 0 20px rgba(61,139,253,0.6); }
+  .winner-overlay .sub{
+    font-size:12px;
+    color:var(--text-muted);
+    letter-spacing:1px;
+  }
+
+  .footnote{
+    max-width:920px;
+    width:100%;
+    font-size:10.5px;
+    color:var(--text-muted);
+    margin-top:10px;
+    line-height:1.6;
+    letter-spacing:0.3px;
+  }
+  .footnote b{ color:var(--text-bright); }
+  .swatch{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; }
+  .swatch.red{ background:var(--red); }
+  .swatch.blue{ background:var(--blue); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="titlebar">
+    <div>
+      <h1>ARENA <span>//</span> BALL BATTLE SIM</h1>
+      <div class="subtitle">MERGE · CLASH · CONSUME</div>
+    </div>
+  </div>
+
+  <div class="arena-wrap" id="arenaWrap">
+    <canvas id="canvas"></canvas>
+
+    <div class="hud">
+      <div class="stat red">RED <b id="redCount">0</b></div>
+      <div class="stat">UNITS LEFT <b id="totalCount">0</b></div>
+      <div class="stat blue">BLUE <b id="blueCount">0</b></div>
+    </div>
+
+    <div class="overlay" id="startOverlay">
+      <h2>DEPLOY UNITS</h2>
+      <div class="desc">
+        Same color touching → merge into one. Different color, same size → bounce hard, or shatter in half if large enough. Different color, different size → the bigger one absorbs the smaller and grows. Last ball standing wins.
+      </div>
+      <div class="setup-row">
+        <div class="setup-col red">
+          <label>RED TEAM</label>
+          <div class="count-input">
+            <button id="redMinus">−</button>
+            <span id="redVal">10</span>
+            <button id="redPlus">+</button>
+          </div>
+        </div>
+        <div class="setup-col blue">
+          <label>BLUE TEAM</label>
+          <div class="count-input">
+            <button id="blueMinus">−</button>
+            <span id="blueVal">10</span>
+            <button id="bluePlus">+</button>
+          </div>
+        </div>
+      </div>
+      <button class="deploy-btn" id="deployBtn">DEPLOY</button>
+    </div>
+
+    <div class="winner-overlay" id="winnerOverlay">
+      <div class="result" id="resultText">RED WINS</div>
+      <div class="sub" id="resultSub">1 unit remains</div>
+      <button class="deploy-btn" id="rematchBtn">REMATCH</button>
+    </div>
+  </div>
+
+  <div class="controls-bar">
+    <button class="ghost" id="resetBtn">↺ RESET</button>
+  </div>
+
+  <div class="footnote">
+    <b>Rules:</b> <span class="swatch red"></span><span class="swatch red"></span> or <span class="swatch blue"></span><span class="swatch blue"></span> same color touch → merge &nbsp;|&nbsp;
+    <span class="swatch red"></span><span class="swatch blue"></span> same size → spectacular bounce (shatters in half if large) &nbsp;|&nbsp;
+    <span class="swatch red"></span><span class="swatch blue"></span> different size → bigger absorbs smaller and grows.
+  </div>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const arenaWrap = document.getElementById('arenaWrap');
+  const startOverlay = document.getElementById('startOverlay');
+  const winnerOverlay = document.getElementById('winnerOverlay');
+  const resultText = document.getElementById('resultText');
+  const resultSub = document.getElementById('resultSub');
+  const redCountEl = document.getElementById('redCount');
+  const blueCountEl = document.getElementById('blueCount');
+  const totalCountEl = document.getElementById('totalCount');
+
+  let W = 0, H = 0, DPR = 1;
+  function resizeCanvas(){
+    const rect = arenaWrap.getBoundingClientRect();
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = rect.width; H = rect.height;
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  // ---------- config ----------
+  const COLORS = {
+    red:  { main:'#ff4757', glow:'#ff8a95', dark:'#8f1c27' },
+    blue: { main:'#3d8bfd', glow:'#8fc0ff', dark:'#123a73' }
+  };
+  const MIN_R = 10;
+  const BASE_R_MIN = 14, BASE_R_MAX = 22;
+  const SPLIT_THRESHOLD = 30;     // radius above which a same-size clash shatters instead of just bouncing
+  const SIZE_TOL = 0.85;          // ratio (small/big) above which two balls count as "same size"
+  const WANDER = 10;              // random accel strength
+  const MAX_SPEED_BASE = 140;     // px/sec baseline
+  const RESTITUTION_PUSH = 1.02;
+
+  let balls = [];
+  let particles = [];
+  let idCounter = 1;
+  let running = false;
+  let lastT = 0;
+  let rafId = null;
+
+  function rand(a,b){ return a + Math.random()*(b-a); }
+  function areaFromR(r){ return r*r; } // proportional to area, constant pi omitted
+  function rFromArea(a){ return Math.sqrt(a); }
+
+  function makeBall(color, x, y, r){
+    const ang = rand(0, Math.PI*2);
+    const speed = rand(30, 70);
+    return {
+      id: idCounter++,
+      color, x, y, r,
+      vx: Math.cos(ang)*speed,
+      vy: Math.sin(ang)*speed
+    };
+  }
+
+  function spawnTeams(redN, blueN){
+    balls = [];
+    particles = [];
+    const pad = 40;
+    for(let i=0;i<redN;i++){
+      const r = rand(BASE_R_MIN, BASE_R_MAX);
+      const x = rand(pad, W*0.42);
+      const y = rand(pad, H-pad);
+      balls.push(makeBall('red', x, y, r));
+    }
+    for(let i=0;i<blueN;i++){
+      const r = rand(BASE_R_MIN, BASE_R_MAX);
+      const x = rand(W*0.58, W-pad);
+      const y = rand(pad, H-pad);
+      balls.push(makeBall('blue', x, y, r));
+    }
+  }
+
+  function addParticles(x, y, color, count, spread, life){
+    for(let i=0;i<count;i++){
+      const ang = rand(0, Math.PI*2);
+      const spd = rand(spread*0.3, spread);
+      particles.push({
+        x, y,
+        vx: Math.cos(ang)*spd,
+        vy: Math.sin(ang)*spd,
+        life: life,
+        maxLife: life,
+        color
+      });
+    }
+  }
+
+  function maxSpeedFor(r){
+    return Math.max(60, MAX_SPEED_BASE * (22 / r));
+  }
+
+  function updatePhysics(dt){
+    // wander + integrate
+    for(const b of balls){
+      b.vx += rand(-1,1) * WANDER;
+      b.vy += rand(-1,1) * WANDER;
+      const sp = Math.hypot(b.vx, b.vy);
+      const maxSp = maxSpeedFor(b.r);
+      const minSp = maxSp * 0.35;
+      if(sp > maxSp){
+        b.vx = b.vx/sp*maxSp;
+        b.vy = b.vy/sp*maxSp;
+      } else if(sp < minSp && sp > 0.001){
+        b.vx = b.vx/sp*minSp;
+        b.vy = b.vy/sp*minSp;
+      }
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+
+      // walls
+      if(b.x - b.r < 0){ b.x = b.r; b.vx = Math.abs(b.vx); }
+      if(b.x + b.r > W){ b.x = W - b.r; b.vx = -Math.abs(b.vx); }
+      if(b.y - b.r < 0){ b.y = b.r; b.vy = Math.abs(b.vy); }
+      if(b.y + b.r > H){ b.y = H - b.r; b.vy = -Math.abs(b.vy); }
+    }
+
+    // collisions
+    const processed = new Set();
+    const toRemove = new Set();
+    const toAdd = [];
+
+    for(let i=0;i<balls.length;i++){
+      const a = balls[i];
+      if(processed.has(a.id) || toRemove.has(a.id)) continue;
+      for(let j=i+1;j<balls.length;j++){
+        const c = balls[j];
+        if(processed.has(a.id)) break;
+        if(processed.has(c.id) || toRemove.has(c.id)) continue;
+        const dx = c.x - a.x, dy = c.y - a.y;
+        const dist = Math.hypot(dx, dy);
+        if(dist < a.r + c.r && dist > 0.0001){
+          // collision event a<->c
+          processed.add(a.id); processed.add(c.id);
+          const nx = dx/dist, ny = dy/dist;
+
+          if(a.color === c.color){
+            // MERGE
+            const newArea = areaFromR(a.r) + areaFromR(c.r);
+            const newR = rFromArea(newArea);
+            const ma = areaFromR(a.r), mc = areaFromR(c.r);
+            const nvx = (a.vx*ma + c.vx*mc)/(ma+mc);
+            const nvy = (a.vy*ma + c.vy*mc)/(ma+mc);
+            const nxp = (a.x*ma + c.x*mc)/(ma+mc);
+            const nyp = (a.y*ma + c.y*mc)/(ma+mc);
+            toRemove.add(a.id); toRemove.add(c.id);
+            toAdd.push({ color:a.color, x:nxp, y:nyp, r:newR, vx:nvx, vy:nvy });
+            addParticles(nxp, nyp, a.color, 14, 90, 0.5);
+          } else {
+            const bigger = a.r >= c.r ? a : c;
+            const smaller = a.r >= c.r ? c : a;
+            const ratio = smaller.r / bigger.r;
+            const midx = (a.x+c.x)/2, midy=(a.y+c.y)/2;
+
+            if(ratio >= SIZE_TOL){
+              // same size
+              if(bigger.r >= SPLIT_THRESHOLD){
+                // SHATTER both into halves
+                [a,c].forEach(ball=>{
+                  const half = rFromArea(areaFromR(ball.r)/2);
+                  for(let k=0;k<2;k++){
+                    const ang = rand(0, Math.PI*2);
+                    const spd = rand(60, 130);
+                    const offX = Math.cos(ang)*(half+2);
+                    const offY = Math.sin(ang)*(half+2);
+                    toAdd.push({
+                      color: ball.color,
+                      x: ball.x+offX, y: ball.y+offY,
+                      r: half,
+                      vx: Math.cos(ang)*spd + ball.vx*0.3,
+                      vy: Math.sin(ang)*spd + ball.vy*0.3
+                    });
+                  }
+                });
+                toRemove.add(a.id); toRemove.add(c.id);
+                addParticles(midx, midy, 'red', 10, 140, 0.6);
+                addParticles(midx, midy, 'blue', 10, 140, 0.6);
+              } else {
+                // SPECTACULAR BOUNCE (elastic, equal-ish mass swap along normal)
+                const avn_a = a.vx*nx + a.vy*ny;
+                const avn_c = c.vx*nx + c.vy*ny;
+                // swap normal components (elastic, equal mass approx)
+                a.vx += (avn_c - avn_a)*nx;
+                a.vy += (avn_c - avn_a)*ny;
+                c.vx += (avn_a - avn_c)*nx;
+                c.vy += (avn_a - avn_c)*ny;
+                // push apart to resolve overlap
+                const overlap = (a.r + c.r - dist) * RESTITUTION_PUSH;
+                a.x -= nx*overlap/2; a.y -= ny*overlap/2;
+                c.x += nx*overlap/2; c.y += ny*overlap/2;
+                addParticles(midx, midy, 'red', 8, 160, 0.4);
+                addParticles(midx, midy, 'blue', 8, 160, 0.4);
+              }
+            } else {
+              // ABSORB: bigger grows, smaller removed
+              const newArea = areaFromR(bigger.r) + areaFromR(smaller.r);
+              bigger.r = rFromArea(newArea);
+              bigger.vx = bigger.vx*0.85 + smaller.vx*0.15;
+              bigger.vy = bigger.vy*0.85 + smaller.vy*0.15;
+              toRemove.add(smaller.id);
+              addParticles(smaller.x, smaller.y, bigger.color, 10, 70, 0.45);
+            }
+          }
+        }
+      }
+    }
+
+    if(toRemove.size){
+      balls = balls.filter(b=>!toRemove.has(b.id));
+    }
+    for(const spec of toAdd){
+      // clamp inside arena
+      spec.x = Math.min(Math.max(spec.x, spec.r), W-spec.r);
+      spec.y = Math.min(Math.max(spec.y, spec.r), H-spec.r);
+      balls.push({ id:idCounter++, ...spec });
+    }
+
+    // particles
+    for(const p of particles){
+      p.x += p.vx*dt; p.y += p.vy*dt;
+      p.vx *= 0.92; p.vy *= 0.92;
+      p.life -= dt;
+    }
+    particles = particles.filter(p=>p.life>0);
+  }
+
+  function drawGrid(){
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    const step = 40;
+    for(let x=0;x<W;x+=step){
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    }
+    for(let y=0;y<H;y+=step){
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  let sweepAngle = 0;
+  function drawSweep(dt){
+    sweepAngle += dt*0.5;
+    const cx = W/2, cy = H/2;
+    const R = Math.hypot(W,H)/1.4;
+    const grad = ctx.createLinearGradient(
+      cx, cy,
+      cx + Math.cos(sweepAngle)*R, cy + Math.sin(sweepAngle)*R
+    );
+    grad.addColorStop(0, 'rgba(255,180,84,0.10)');
+    grad.addColorStop(1, 'rgba(255,180,84,0)');
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,R, sweepAngle-0.5, sweepAngle);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawBall(b){
+    const c = COLORS[b.color];
+    ctx.save();
+    ctx.shadowColor = c.glow;
+    ctx.shadowBlur = Math.min(18, b.r*0.9);
+    const grad = ctx.createRadialGradient(
+      b.x - b.r*0.35, b.y - b.r*0.35, b.r*0.1,
+      b.x, b.y, b.r
+    );
+    grad.addColorStop(0, c.glow);
+    grad.addColorStop(0.55, c.main);
+    grad.addColorStop(1, c.dark);
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawParticles(){
+    for(const p of particles){
+      const c = COLORS[p.color] ? COLORS[p.color].glow : p.color;
+      const alpha = Math.max(0, p.life/p.maxLife);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2.5, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function render(dt){
+    ctx.clearRect(0,0,W,H);
+    drawGrid();
+    drawSweep(dt);
+    for(const b of balls) drawBall(b);
+    drawParticles();
+  }
+
+  function updateHUD(){
+    let r=0,bl=0;
+    for(const b of balls){ if(b.color==='red') r++; else bl++; }
+    redCountEl.textContent = r;
+    blueCountEl.textContent = bl;
+    totalCountEl.textContent = balls.length;
+  }
+
+  function checkEnd(){
+    if(balls.length <= 1){
+      running = false;
+      const winner = balls[0];
+      if(winner){
+        resultText.textContent = (winner.color === 'red' ? 'RED WINS' : 'BLUE WINS');
+        resultText.className = 'result ' + winner.color;
+        resultSub.textContent = '1 unit remains · final radius ' + Math.round(winner.r);
+      } else {
+        resultText.textContent = 'DRAW';
+        resultText.className = 'result';
+        resultSub.textContent = 'no units remain';
+      }
+      winnerOverlay.style.display = 'flex';
+      return true;
+    }
+    return false;
+  }
+
+  function loop(t){
+    if(!running) return;
+    if(!lastT) lastT = t;
+    let dt = (t - lastT)/1000;
+    dt = Math.min(dt, 0.05);
+    lastT = t;
+
+    updatePhysics(dt);
+    render(dt);
+    updateHUD();
+
+    if(checkEnd()) return;
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function startGame(redN, blueN){
+    winnerOverlay.style.display = 'none';
+    startOverlay.style.display = 'none';
+    resizeCanvas();
+    spawnTeams(redN, blueN);
+    updateHUD();
+    running = true;
+    lastT = 0;
+    if(rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function showSetup(){
+    running = false;
+    if(rafId) cancelAnimationFrame(rafId);
+    winnerOverlay.style.display = 'none';
+    startOverlay.style.display = 'flex';
+    ctx.clearRect(0,0,W,H);
+  }
+
+  // ---------- UI wiring ----------
+  let redN = 10, blueN = 10;
+  const redVal = document.getElementById('redVal');
+  const blueVal = document.getElementById('blueVal');
+
+  document.getElementById('redMinus').onclick = ()=>{ redN = Math.max(2, redN-1); redVal.textContent = redN; };
+  document.getElementById('redPlus').onclick  = ()=>{ redN = Math.min(20, redN+1); redVal.textContent = redN; };
+  document.getElementById('blueMinus').onclick = ()=>{ blueN = Math.max(2, blueN-1); blueVal.textContent = blueN; };
+  document.getElementById('bluePlus').onclick  = ()=>{ blueN = Math.min(20, blueN+1); blueVal.textContent = blueN; };
+
+  document.getElementById('deployBtn').onclick = ()=> startGame(redN, blueN);
+  document.getElementById('rematchBtn').onclick = ()=> startGame(redN, blueN);
+  document.getElementById('resetBtn').onclick = showSetup;
+
+  showSetup();
+})();
+</script>
+</body>
+</html>
