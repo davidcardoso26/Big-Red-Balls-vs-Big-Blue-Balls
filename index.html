@@ -1,4 +1,4 @@
-# <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -339,8 +339,8 @@
   const BASE_R_MIN = 14, BASE_R_MAX = 22;
   const SPLIT_THRESHOLD = 30;     // radius above which a same-size clash shatters instead of just bouncing
   const SIZE_TOL = 0.85;          // ratio (small/big) above which two balls count as "same size"
-  const WANDER = 10;              // random accel strength
-  const MAX_SPEED_BASE = 140;     // px/sec baseline
+  const WANDER = 22;               // random accel strength
+  const MAX_SPEED_BASE = 320;      // px/sec baseline
   const RESTITUTION_PUSH = 1.02;
 
   let balls = [];
@@ -356,7 +356,7 @@
 
   function makeBall(color, x, y, r){
     const ang = rand(0, Math.PI*2);
-    const speed = rand(30, 70);
+    const speed = rand(90, 180);
     return {
       id: idCounter++,
       color, x, y, r,
